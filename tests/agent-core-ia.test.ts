@@ -41,4 +41,30 @@ describe("AgentCoreIA", () => {
       "Você tem 15 anos de experiência em arquitetura de sistemas.",
     );
   });
+
+  it("deve receber a configuração completa no construtor", () => {
+    const agent = new AgentCoreIA({
+      role: "Engenheiro de software sênior",
+      goal: "Projetar soluções simples e testáveis",
+      backstory: "Você tem 15 anos de experiência em arquitetura de sistemas.",
+      tasks: [
+        {
+          description: "Criar uma API de cadastro de clientes",
+          expectedOutput: "Endpoints REST documentados e com testes",
+        },
+      ],
+    });
+
+    expect(agent.systemPrompt).toContain("Engenheiro de software sênior");
+    expect(agent.systemPrompt).toContain("Projetar soluções simples e testáveis");
+    expect(agent.systemPrompt).toContain(
+      "Você tem 15 anos de experiência em arquitetura de sistemas.",
+    );
+    expect(agent.tasks).toEqual([
+      {
+        description: "Criar uma API de cadastro de clientes",
+        expectedOutput: "Endpoints REST documentados e com testes",
+      },
+    ]);
+  });
 });
