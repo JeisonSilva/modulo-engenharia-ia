@@ -27,4 +27,18 @@ describe("AgentCoreIA", () => {
 
     expect(agent.humanRequest).toBe("Crie uma API de cadastro de clientes");
   });
+
+  it("deve montar o system prompt a partir de role, goal e backstory", () => {
+    const agent = new AgentCoreIA({
+      role: "Engenheiro de software sênior",
+      goal: "Projetar soluções simples e testáveis",
+      backstory: "Você tem 15 anos de experiência em arquitetura de sistemas.",
+    });
+
+    expect(agent.systemPrompt).toContain("Engenheiro de software sênior");
+    expect(agent.systemPrompt).toContain("Projetar soluções simples e testáveis");
+    expect(agent.systemPrompt).toContain(
+      "Você tem 15 anos de experiência em arquitetura de sistemas.",
+    );
+  });
 });
