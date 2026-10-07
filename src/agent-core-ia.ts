@@ -1,8 +1,25 @@
-export type AgentCoreIAOptionsComSystemPrompt = {
+export type Task = {
+  description: string;
+  expectedOutput: string;
+};
+
+export type GuardrailResult = {
+  valid: boolean;
+  message?: string;
+};
+
+export type Guardrail = (output: string) => GuardrailResult;
+
+type AgentCoreIAOptionsBase = {
+  tasks?: Task[];
+  guardrails?: Guardrail[];
+};
+
+export type AgentCoreIAOptionsComSystemPrompt = AgentCoreIAOptionsBase & {
   systemPrompt: string;
 };
 
-export type AgentCoreIAOptionsComPersona = {
+export type AgentCoreIAOptionsComPersona = AgentCoreIAOptionsBase & {
   role: string;
   goal: string;
   backstory: string;
@@ -27,10 +44,14 @@ function montarSystemPrompt(options: AgentCoreIAOptions): string {
 
 export class AgentCoreIA {
   readonly systemPrompt: string;
+  readonly tasks: readonly Task[];
+  readonly guardrails: readonly Guardrail[];
   humanRequest: string | undefined;
 
   constructor(options: AgentCoreIAOptions) {
     this.systemPrompt = montarSystemPrompt(options);
+    this.tasks = options.tasks ?? [];
+    this.guardrails = options.guardrails ?? [];
   }
 
   setHumanRequest(text: string): void {
