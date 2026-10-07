@@ -67,4 +67,18 @@ describe("AgentCoreIA", () => {
       },
     ]);
   });
+
+  it("deve receber os guardrails no construtor", () => {
+    const semResposta = (output: string) =>
+      output.trim().length > 0
+        ? { valid: true }
+        : { valid: false, message: "A resposta não pode ser vazia" };
+
+    const agent = new AgentCoreIA({
+      systemPrompt: "Você é um agente especialista.",
+      guardrails: [semResposta],
+    });
+
+    expect(agent.guardrails).toEqual([semResposta]);
+  });
 });
