@@ -19,4 +19,12 @@ describe("AgentCoreIA", () => {
     expect(result.status).toBe("approve");
     expect(result.response).toBe("estou pronto para receber sua solicitação");
   });
+
+  it("deve definir a solicitação do humano", () => {
+    const agent = new AgentCoreIA({ systemPrompt: "Você é um agente especialista." });
+
+    agent.setHumanRequest("Crie uma API de cadastro de clientes");
+
+    expect(agent.humanRequest).toBe("Crie uma API de cadastro de clientes");
+  });
 });
