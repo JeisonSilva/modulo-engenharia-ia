@@ -10,9 +10,16 @@ export type GuardrailResult = {
 
 export type Guardrail = (output: string) => GuardrailResult;
 
+export type Tool = {
+  name: string;
+  description: string;
+  run(input: string): Promise<string>;
+};
+
 type AgentCoreIAOptionsBase = {
   tasks?: Task[];
   guardrails?: Guardrail[];
+  tools?: Tool[];
 };
 
 export type AgentCoreIAOptionsComSystemPrompt = AgentCoreIAOptionsBase & {
@@ -47,6 +54,7 @@ export class AgentCoreIA {
   readonly systemPrompt: string;
   readonly tasks: readonly Task[];
   readonly guardrails: readonly Guardrail[];
+  readonly tools: readonly Tool[];
   humanRequest: string | undefined;
 
   constructor(options: AgentCoreIAOptions) {
@@ -54,6 +62,7 @@ export class AgentCoreIA {
     this.systemPrompt = montarSystemPrompt(options);
     this.tasks = options.tasks ?? [];
     this.guardrails = options.guardrails ?? [];
+    this.tools = options.tools ?? [];
   }
 
   setHumanRequest(text: string): void {

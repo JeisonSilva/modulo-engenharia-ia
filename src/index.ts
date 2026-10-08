@@ -6,6 +6,7 @@ export type {
   Guardrail,
   GuardrailResult,
   Task,
+  Tool,
 } from "./agent-core-ia.js";
 export { OrchestratorAgent } from "./orchestrator-agent.js";
 export type { OrchestratorAgentOptions } from "./orchestrator-agent.js";
