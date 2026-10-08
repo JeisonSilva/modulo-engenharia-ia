@@ -43,12 +43,14 @@ function montarSystemPrompt(options: AgentCoreIAOptions): string {
 }
 
 export class AgentCoreIA {
+  readonly role: string | undefined;
   readonly systemPrompt: string;
   readonly tasks: readonly Task[];
   readonly guardrails: readonly Guardrail[];
   humanRequest: string | undefined;
 
   constructor(options: AgentCoreIAOptions) {
+    this.role = "role" in options ? options.role : undefined;
     this.systemPrompt = montarSystemPrompt(options);
     this.tasks = options.tasks ?? [];
     this.guardrails = options.guardrails ?? [];

@@ -9,3 +9,4 @@ export type {
 } from "./agent-core-ia.js";
 export { OrchestratorAgent } from "./orchestrator-agent.js";
 export type { OrchestratorAgentOptions } from "./orchestrator-agent.js";
+export type { Llm } from "./llm.js";
