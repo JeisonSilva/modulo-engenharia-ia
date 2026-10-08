@@ -45,6 +45,10 @@ export class OrchestratorRouter extends AgentCoreIA {
     }
 
     escolhido.setHumanRequest(solicitacao);
-    return escolhido.execute<T>();
+    const resultado = await escolhido.execute<Record<string, unknown>>();
+
+    const caminhoDoFilho = Array.isArray(resultado.route) ? resultado.route : [escolhido.role];
+    const route = [this.role, ...caminhoDoFilho].filter((role) => role !== undefined);
+    return { ...resultado, route } as T;
   }
 }
