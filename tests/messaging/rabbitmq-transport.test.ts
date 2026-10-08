@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   AgentCoreIA,
@@ -68,11 +69,42 @@ describe.skipIf(url === undefined)("RabbitMqTransport", () => {
     await new Preenche({ role, goal: "g", backstory: "b" }).listen(await conectar(exchange));
 
     const remoto = new RemoteAgent({ role, transport: await conectar(exchange) });
-    remoto.setHumanRequest("x", { schema: { type: "object" }, dados: { ja: 1 } });
+    remoto.setHumanRequest("x", { schema: { type: "object" }, dados: { ja: 1 }, pedidoOriginal: "x" });
 
     const resposta = await remoto.execute<AgentResponse>();
 
     expect(resposta.dados).toEqual({ campo: "valor", antes: ["ja"] });
+  });
+
+  it("o sequencial consome a própria fila e percorre os agents pelas filas", async () => {
+    const sufixo = Date.now().toString(36);
+    const exchange = `agents-test-seq-${sufixo}`;
+    const [a, b, seq] = [`a-${sufixo}`, `b-${sufixo}`, `seq-${sufixo}`];
+    class Preenche extends AgentCoreIA {
+      constructor(role: string, private readonly patch: Record<string, unknown>) {
+        super({ role, goal: "g", backstory: "b" });
+      }
+      override async execute<T>(): Promise<T> {
+        return { status: "approve", response: `${this.humanRequest}>${this.role}`, dados: this.patch } as T;
+      }
+    }
+    await new Preenche(a, { nome: "Maria" }).listen(await conectar(exchange));
+    await new Preenche(b, { idade: 30 }).listen(await conectar(exchange));
+
+    const interno = await conectar(exchange);
+    const sequencial = new SequentialAgent({
+      role: seq,
+      goal: "g",
+      backstory: "b",
+      schema: z.object({ nome: z.string(), idade: z.number() }),
+      subAgents: [new RemoteAgent({ role: a, transport: interno }), new RemoteAgent({ role: b, transport: interno })],
+    });
+    await sequencial.listen(interno);
+
+    const resposta = await (await conectar(exchange)).request(seq, { texto: "x" });
+
+    expect(resposta.status).toBe("approve");
+    expect(resposta.dados).toEqual({ nome: "Maria", idade: 30 });
   });
 
   it("propaga o erro do agent a quem pediu", async () => {

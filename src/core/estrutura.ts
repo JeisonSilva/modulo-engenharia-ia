@@ -5,6 +5,8 @@ export type Dados = Record<string, unknown>;
 export type Estrutura = {
   schema: JsonSchema;
   dados: Dados;
+  // O que foi pedido no início: o `texto` de cada etapa é a resposta da anterior e perde esse objetivo
+  pedidoOriginal: string;
 };
 
 // O que viaja na fila até o agent
