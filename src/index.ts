@@ -21,3 +21,5 @@ export type {
   IntelligentOrchestratorResult,
 } from "./intelligent-orchestrator.js";
 export type { AgentResponse } from "./response.js";
+export { systemPromptSchema } from "./system-prompt.js";
+export type { SystemPrompt } from "./system-prompt.js";

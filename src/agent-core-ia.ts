@@ -1,3 +1,5 @@
+import { systemPromptSchema } from "./system-prompt.js";
+
 export type Task = {
   description: string;
   expectedOutput: string;
@@ -43,10 +45,12 @@ function montarSystemPrompt(options: AgentCoreIAOptions): string {
     return options.systemPrompt;
   }
 
-  return [
-    `Você é ${options.role}. ${options.backstory}`,
-    `Seu objetivo pessoal é: ${options.goal}`,
-  ].join("\n");
+  const prompt = systemPromptSchema.parse({
+    papel: options.role,
+    objetivo: options.goal,
+    contexto: options.backstory,
+  });
+  return JSON.stringify(prompt, null, 2);
 }
 
 export class AgentCoreIA {
