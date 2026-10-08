@@ -12,7 +12,7 @@ export { OrchestratorAgent } from "./agents/orchestrator-agent.js";
 export type { OrchestratorAgentOptions } from "./agents/orchestrator-agent.js";
 export type { Llm } from "./core/llm.js";
 export { SequentialAgent } from "./agents/sequential-agent.js";
-export type { SequentialAgentOptions } from "./agents/sequential-agent.js";
+export type { SequentialAgentOptions, SequentialStructuredResult } from "./agents/sequential-agent.js";
 export { ParallelAgent } from "./agents/parallel-agent.js";
 export type { ParallelAgentOptions, ParallelResult } from "./agents/parallel-agent.js";
 export { IntelligentOrchestrator } from "./agents/intelligent-orchestrator.js";
@@ -32,3 +32,11 @@ export type {
   HandoffResultado,
   HandoffResolver,
 } from "./handoff/handoff.js";
+export { mesclar } from "./core/estrutura.js";
+export type { AgentRequest, Dados, Estrutura, JsonSchema } from "./core/estrutura.js";
+export type { AgentTransport, RequestHandler } from "./core/transport.js";
+export { InMemoryTransport } from "./messaging/in-memory-transport.js";
+export { RabbitMqTransport } from "./messaging/rabbitmq-transport.js";
+export type { RabbitMqTransportOptions } from "./messaging/rabbitmq-transport.js";
+export { RemoteAgent } from "./messaging/remote-agent.js";
+export type { RemoteAgentOptions } from "./messaging/remote-agent.js";
