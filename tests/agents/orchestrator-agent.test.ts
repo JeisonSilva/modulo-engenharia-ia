@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { AgentCoreIA, OrchestratorAgent } from "../src/index.js";
+import { AgentCoreIA, OrchestratorAgent } from "../../src/index.js";
 
 describe("OrchestratorAgent", () => {
   it("deve receber os subagents no construtor", () => {

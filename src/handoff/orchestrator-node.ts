@@ -1,4 +1,4 @@
-import type { AgentCoreIA } from "./agent-core-ia.js";
+import type { AgentCoreIA } from "../core/agent-core-ia.js";
 import type { HandoffResultado } from "./handoff.js";
 
 export type OrchestratorNode = AgentCoreIA & {

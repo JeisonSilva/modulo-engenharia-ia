@@ -1,4 +1,4 @@
-import type { ExecutionContext } from "./handoff.js";
+import type { ExecutionContext } from "../handoff/handoff.js";
 import { systemPromptSchema } from "./system-prompt.js";
 
 export type Task = {

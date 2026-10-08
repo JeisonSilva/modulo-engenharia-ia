@@ -1,5 +1,5 @@
-import { AgentCoreIA, type AgentCoreIAOptions } from "./agent-core-ia.js";
-import { extrairResponse } from "./response.js";
+import { AgentCoreIA, type AgentCoreIAOptions } from "../core/agent-core-ia.js";
+import { extrairResponse } from "../core/response.js";
 
 export type SequentialAgentOptions = AgentCoreIAOptions & {
   subAgents: AgentCoreIA[];

@@ -1,4 +1,4 @@
-import { AgentCoreIA, type AgentCoreIAOptions } from "./agent-core-ia.js";
+import { AgentCoreIA, type AgentCoreIAOptions } from "../core/agent-core-ia.js";
 import {
   acrescentar,
   contextoSemHandoff,
@@ -6,10 +6,10 @@ import {
   type ExecutionContext,
   type HandoffRegistro,
   type HandoffResultado,
-} from "./handoff.js";
-import type { Llm } from "./llm.js";
-import { isOrchestrator } from "./orchestrator-node.js";
-import { extrairResponse, type AgentResponse } from "./response.js";
+} from "../handoff/handoff.js";
+import type { Llm } from "../core/llm.js";
+import { isOrchestrator } from "../handoff/orchestrator-node.js";
+import { extrairResponse, type AgentResponse } from "../core/response.js";
 
 export type IntelligentOrchestratorOptions = AgentCoreIAOptions & {
   subAgents: AgentCoreIA[];
