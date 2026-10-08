@@ -105,13 +105,52 @@ describe("Padrão: Orquestrador de orquestradores", () => {
     expect(executeRest).toHaveBeenCalledTimes(1);
     expect(executeBanco).toHaveBeenCalledTimes(1);
 
-    // O resultado consolidado pela folha sobe até a raiz sem alteração
-    expect(resultado).toEqual({
+    // O resultado consolidado pela folha sobe até a raiz com os dados intactos
+    expect(resultado).toMatchObject({
       status: "approve",
       response: "consolidado da API",
       confidence: 0.97,
       rounds: 1,
       resultados: [[resultadoRest, resultadoBanco]],
+    });
+  });
+
+  it("deve registrar o caminho percorrido, da raiz até o orquestrador que executou", async () => {
+    const rest = criarEspecialista("Especialista REST");
+    vi.spyOn(rest, "execute").mockResolvedValue({
+      status: "approve",
+      response: "REST: endpoint criado",
+    });
+
+    const api = new IntelligentOrchestrator({
+      role: "Orquestrador de API",
+      goal: "Entregar APIs completas",
+      backstory: "Você coordena especialistas de API.",
+      subAgents: [rest],
+      llm: criarLlm(["Especialista REST", "consolidado da API", "0.97"]),
+      maxRounds: 3,
+    });
+    const backend = new OrchestratorRouter({
+      role: "Orquestrador de Backend",
+      goal: "Encaminhar o trabalho de backend",
+      backstory: "Você conhece as equipes de backend.",
+      subOrchestrators: [api],
+      llm: criarLlm(["Orquestrador de API"]),
+    });
+    const raiz = new OrchestratorRouter({
+      role: "Orquestrador raiz",
+      goal: "Encaminhar cada solicitação ao orquestrador certo",
+      backstory: "Você conhece todas as equipes.",
+      subOrchestrators: [backend],
+      llm: criarLlm(["Orquestrador de Backend"]),
+    });
+
+    raiz.setHumanRequest(SOLICITACAO);
+    const resultado = await raiz.execute();
+
+    expect(resultado).toMatchObject({
+      response: "consolidado da API",
+      route: ["Orquestrador raiz", "Orquestrador de Backend", "Orquestrador de API"],
     });
   });
 
