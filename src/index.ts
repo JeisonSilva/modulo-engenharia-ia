@@ -23,3 +23,6 @@ export type {
 export type { AgentResponse } from "./response.js";
 export { systemPromptSchema } from "./system-prompt.js";
 export type { SystemPrompt } from "./system-prompt.js";
+export { OrchestratorRouter } from "./orchestrator-router.js";
+export type { OrchestratorRouterOptions } from "./orchestrator-router.js";
+export type { OrchestratorNode } from "./orchestrator-node.js";

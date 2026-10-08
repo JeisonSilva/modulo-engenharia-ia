@@ -1,5 +1,6 @@
 import { AgentCoreIA, type AgentCoreIAOptions } from "./agent-core-ia.js";
 import type { Llm } from "./llm.js";
+import { isOrchestrator } from "./orchestrator-node.js";
 import { extrairResponse, type AgentResponse } from "./response.js";
 
 export type IntelligentOrchestratorOptions = AgentCoreIAOptions & {
@@ -20,6 +21,7 @@ export type IntelligentOrchestratorResult = {
 const CERTEZA_MINIMA = 0.95;
 
 export class IntelligentOrchestrator extends AgentCoreIA {
+  readonly isOrchestrator = true as const;
   readonly subAgents: readonly AgentCoreIA[];
   private readonly llm: Llm;
   private readonly maxRounds: number;
@@ -28,6 +30,11 @@ export class IntelligentOrchestrator extends AgentCoreIA {
     super(options);
     if (!Number.isInteger(options.maxRounds) || options.maxRounds < 1) {
       throw new Error("maxRounds deve ser um inteiro maior ou igual a 1");
+    }
+    if (options.subAgents.some(isOrchestrator)) {
+      throw new Error(
+        "A equipe de um orquestrador com especialistas deve conter apenas especialistas, nunca orquestradores",
+      );
     }
     this.subAgents = options.subAgents;
     this.llm = options.llm;
