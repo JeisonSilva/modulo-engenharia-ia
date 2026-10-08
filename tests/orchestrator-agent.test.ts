@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AgentCoreIA, OrchestratorAgent } from "../src/index.js";
 
 describe("OrchestratorAgent", () => {
@@ -64,5 +64,47 @@ describe("OrchestratorAgent", () => {
     ]);
     expect(orquestrador.guardrails).toEqual([semResposta]);
     expect(orquestrador.subAgents).toEqual([desenvolvedor]);
+  });
+
+  it("deve delegar a tarefa ao subagent escolhido pelo LLM", async () => {
+    const desenvolvedor = new AgentCoreIA({
+      role: "Desenvolvedor",
+      goal: "Implementar código",
+      backstory: "Você escreve código limpo.",
+    });
+    const revisor = new AgentCoreIA({
+      role: "Revisor",
+      goal: "Revisar código",
+      backstory: "Você encontra falhas de design.",
+    });
+
+    const resultadoDoDesenvolvedor = { status: "approve", response: "API criada" };
+    const setHumanRequestDev = vi.spyOn(desenvolvedor, "setHumanRequest");
+    const executeDev = vi
+      .spyOn(desenvolvedor, "execute")
+      .mockResolvedValue(resultadoDoDesenvolvedor);
+    const executeRevisor = vi.spyOn(revisor, "execute");
+
+    // Infra mockada: o LLM sempre escolhe o "Desenvolvedor"
+    const llm = { complete: vi.fn().mockResolvedValue("Desenvolvedor") };
+
+    const orquestrador = new OrchestratorAgent({
+      systemPrompt: "Você coordena a equipe e delega as tarefas.",
+      tasks: [
+        {
+          description: "Criar uma API de cadastro de clientes",
+          expectedOutput: "Endpoints REST documentados e com testes",
+        },
+      ],
+      subAgents: [desenvolvedor, revisor],
+      llm,
+    });
+
+    const resultado = await orquestrador.execute();
+
+    expect(setHumanRequestDev).toHaveBeenCalledWith("Criar uma API de cadastro de clientes");
+    expect(executeDev).toHaveBeenCalledTimes(1);
+    expect(executeRevisor).not.toHaveBeenCalled();
+    expect(resultado).toEqual(resultadoDoDesenvolvedor);
   });
 });
