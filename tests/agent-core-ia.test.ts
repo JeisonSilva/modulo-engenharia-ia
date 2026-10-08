@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AgentCoreIA } from "../src/index.js";
+import { AgentCoreIA, systemPromptSchema } from "../src/index.js";
 
 type AgentResponse = {
   status: string;
@@ -28,25 +28,20 @@ describe("AgentCoreIA", () => {
     expect(agent.humanRequest).toBe("Crie uma API de cadastro de clientes");
   });
 
-  it("deve montar o system prompt estruturado com papel, objetivo e contexto", () => {
+  it("deve montar o system prompt em JSON, no formato do schema zod", () => {
     const agent = new AgentCoreIA({
       role: "Engenheiro de software sênior",
       goal: "Projetar soluções simples e testáveis",
       backstory: "Você tem 15 anos de experiência em arquitetura de sistemas.",
     });
 
-    expect(agent.systemPrompt).toBe(
-      [
-        "# Papel",
-        "Engenheiro de software sênior",
-        "",
-        "# Objetivo",
-        "Projetar soluções simples e testáveis",
-        "",
-        "# Contexto",
-        "Você tem 15 anos de experiência em arquitetura de sistemas.",
-      ].join("\n"),
-    );
+    const prompt = systemPromptSchema.parse(JSON.parse(agent.systemPrompt));
+
+    expect(prompt).toEqual({
+      papel: "Engenheiro de software sênior",
+      objetivo: "Projetar soluções simples e testáveis",
+      contexto: "Você tem 15 anos de experiência em arquitetura de sistemas.",
+    });
   });
 
   it("deve receber a configuração completa no construtor", () => {
