@@ -1,13 +1,9 @@
 import { AgentCoreIA, type AgentCoreIAOptions } from "./agent-core-ia.js";
+import { extrairResponse } from "./response.js";
 
 export type SequentialAgentOptions = AgentCoreIAOptions & {
   subAgents: AgentCoreIA[];
 };
-
-function extrairResponse(resultado: unknown): string | undefined {
-  const response = (resultado as { response?: unknown } | null)?.response;
-  return typeof response === "string" ? response : undefined;
-}
 
 export class SequentialAgent extends AgentCoreIA {
   readonly subAgents: readonly AgentCoreIA[];
