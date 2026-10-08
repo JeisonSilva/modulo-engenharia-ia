@@ -1,3 +1,4 @@
+import type { ExecutionContext } from "./handoff.js";
 import { systemPromptSchema } from "./system-prompt.js";
 
 export type Task = {
@@ -73,7 +74,7 @@ export class AgentCoreIA {
     this.humanRequest = text;
   }
 
-  async execute<T>(): Promise<T> {
+  async execute<T>(_contexto?: ExecutionContext): Promise<T> {
     return { status: "approve", response: MENSAGEM_PRONTO } as T;
   }
 }

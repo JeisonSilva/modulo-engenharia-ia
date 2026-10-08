@@ -1,4 +1,12 @@
 import { AgentCoreIA, type AgentCoreIAOptions } from "./agent-core-ia.js";
+import {
+  acrescentar,
+  contextoSemHandoff,
+  destinoInexistente,
+  type ExecutionContext,
+  type HandoffRegistro,
+  type HandoffResultado,
+} from "./handoff.js";
 import type { Llm } from "./llm.js";
 import { isOrchestrator } from "./orchestrator-node.js";
 import { extrairResponse, type AgentResponse } from "./response.js";
@@ -16,6 +24,7 @@ export type IntelligentOrchestratorResult = {
   rounds: number;
   observations?: string;
   resultados: AgentResponse[][];
+  handoffs?: HandoffRegistro[];
 };
 
 const CERTEZA_MINIMA = 0.95;
@@ -41,13 +50,14 @@ export class IntelligentOrchestrator extends AgentCoreIA {
     this.maxRounds = options.maxRounds;
   }
 
-  override async execute<T>(): Promise<T> {
+  override async execute<T>(contexto?: ExecutionContext): Promise<T> {
     const solicitacao = this.humanRequest;
     if (solicitacao === undefined || this.subAgents.length === 0) {
       return super.execute<T>();
     }
 
     const resultadosPorRodada: AgentResponse[][] = [];
+    const handoffs: HandoffRegistro[] = [];
     let pedido = solicitacao;
     let consolidado = "";
     let certeza = 0;
@@ -57,7 +67,7 @@ export class IntelligentOrchestrator extends AgentCoreIA {
       const resultados = await Promise.all(
         escolhidos.map((agent) => {
           agent.setHumanRequest(pedido);
-          return agent.execute<AgentResponse>();
+          return agent.execute<AgentResponse>(this.contextoDoEspecialista(agent, contexto, handoffs));
         }),
       );
       resultadosPorRodada.push(resultados);
@@ -72,6 +82,7 @@ export class IntelligentOrchestrator extends AgentCoreIA {
           confidence: certeza,
           rounds: rodada,
           resultados: resultadosPorRodada,
+          ...(handoffs.length > 0 ? { handoffs } : {}),
         } satisfies IntelligentOrchestratorResult as T;
       }
 
@@ -94,7 +105,57 @@ export class IntelligentOrchestrator extends AgentCoreIA {
       rounds: this.maxRounds,
       observations,
       resultados: resultadosPorRodada,
+      ...(handoffs.length > 0 ? { handoffs } : {}),
     } satisfies IntelligentOrchestratorResult as T;
+  }
+
+  // Descida: atende um handoff vindo de fora se o destino for um especialista desta equipe
+  async receberHandoff(
+    para: string,
+    pedido: string,
+    caminho: string[],
+  ): Promise<HandoffResultado | undefined> {
+    const destino = this.subAgents.find((agent) => agent.role === para);
+    if (destino === undefined) {
+      return undefined;
+    }
+    destino.setHumanRequest(pedido);
+    const resposta = await destino.execute<AgentResponse>(contextoSemHandoff());
+    return { resposta, caminho: acrescentar(caminho, this.role) };
+  }
+
+  // Contexto de um especialista: o handoff procura primeiro na própria equipe e depois sobe a árvore
+  private contextoDoEspecialista(
+    agent: AgentCoreIA,
+    contextoPai: ExecutionContext | undefined,
+    handoffs: HandoffRegistro[],
+  ): ExecutionContext {
+    const resolver = async (
+      para: string,
+      pedido: string,
+      caminho: string[],
+    ): Promise<HandoffResultado> => {
+      const caminhoAqui = acrescentar(caminho, this.role);
+      const irmao = this.subAgents.find((candidato) => candidato !== agent && candidato.role === para);
+      if (irmao !== undefined) {
+        irmao.setHumanRequest(pedido);
+        const resposta = await irmao.execute<AgentResponse>(contextoSemHandoff());
+        return { resposta, caminho: caminhoAqui };
+      }
+      if (contextoPai?.resolver !== undefined) {
+        return contextoPai.resolver(para, pedido, caminhoAqui);
+      }
+      throw destinoInexistente(para);
+    };
+
+    return {
+      resolver,
+      handoff: async (para, pedido) => {
+        const resultado = await resolver(para, pedido, []);
+        handoffs.push({ de: agent.role ?? "(sem role)", para, caminho: resultado.caminho });
+        return resultado.resposta;
+      },
+    };
   }
 
   private async escolherEspecialistas(pedido: string): Promise<AgentCoreIA[]> {

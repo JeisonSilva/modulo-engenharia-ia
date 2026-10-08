@@ -1,4 +1,12 @@
 import { AgentCoreIA, type AgentCoreIAOptions } from "./agent-core-ia.js";
+import {
+  acrescentar,
+  criarContexto,
+  destinoInexistente,
+  type ExecutionContext,
+  type HandoffResolver,
+  type HandoffResultado,
+} from "./handoff.js";
 import type { Llm } from "./llm.js";
 import { isOrchestrator, type OrchestratorNode } from "./orchestrator-node.js";
 
@@ -23,7 +31,7 @@ export class OrchestratorRouter extends AgentCoreIA {
     this.llm = options.llm;
   }
 
-  override async execute<T>(): Promise<T> {
+  override async execute<T>(contexto?: ExecutionContext): Promise<T> {
     const solicitacao = this.humanRequest;
     if (solicitacao === undefined || this.subOrchestrators.length === 0) {
       return super.execute<T>();
@@ -45,10 +53,48 @@ export class OrchestratorRouter extends AgentCoreIA {
     }
 
     escolhido.setHumanRequest(solicitacao);
-    const resultado = await escolhido.execute<Record<string, unknown>>();
+    const resultado = await escolhido.execute<Record<string, unknown>>(
+      criarContexto(this.subirHandoff(escolhido, contexto)),
+    );
 
     const caminhoDoFilho = Array.isArray(resultado.route) ? resultado.route : [escolhido.role];
     const route = [this.role, ...caminhoDoFilho].filter((role) => role !== undefined);
     return { ...resultado, route } as T;
+  }
+
+  // Descida: procura o destino nas subárvores, acrescentando este roteador ao caminho
+  async receberHandoff(
+    para: string,
+    pedido: string,
+    caminho: string[],
+  ): Promise<HandoffResultado | undefined> {
+    const caminhoAqui = acrescentar(caminho, this.role);
+    for (const filho of this.subOrchestrators) {
+      const resultado = await filho.receberHandoff(para, pedido, caminhoAqui);
+      if (resultado !== undefined) {
+        return resultado;
+      }
+    }
+    return undefined;
+  }
+
+  // Subida: o filho que já procurou na própria subárvore pede ajuda; tenta os irmãos e depois o pai
+  private subirHandoff(escolhido: OrchestratorNode, contextoPai?: ExecutionContext): HandoffResolver {
+    return async (para, pedido, caminho) => {
+      const caminhoAqui = acrescentar(caminho, this.role);
+      for (const irmao of this.subOrchestrators) {
+        if (irmao === escolhido) {
+          continue;
+        }
+        const resultado = await irmao.receberHandoff(para, pedido, caminhoAqui);
+        if (resultado !== undefined) {
+          return resultado;
+        }
+      }
+      if (contextoPai?.resolver !== undefined) {
+        return contextoPai.resolver(para, pedido, caminhoAqui);
+      }
+      throw destinoInexistente(para);
+    };
   }
 }
