@@ -17,7 +17,7 @@ function adiar<T>() {
 const aguardarMicrotarefas = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("Padrão: Paralelo", () => {
-  it("deve executar A, B e C ao mesmo tempo e entregar o consolidado com o resultado de cada um", async () => {
+  it("deve executar A, B e C ao mesmo tempo e entregar o consolidado com o resultado bruto de cada um", async () => {
     const agentA = new AgentCoreIA({
       role: "Analista de segurança",
       goal: "Avaliar riscos de segurança",
@@ -32,6 +32,11 @@ describe("Padrão: Paralelo", () => {
       role: "Analista de manutenção",
       goal: "Avaliar a facilidade de manutenção",
       backstory: "Você valoriza código simples.",
+    });
+    const consolidador = new AgentCoreIA({
+      role: "Consolidador",
+      goal: "Resumir os resultados dos analistas em um único parecer",
+      backstory: "Você sintetiza análises sem perder o que é essencial.",
     });
 
     // Infra mockada: cada execute fica pendente até o teste liberar,
@@ -49,13 +54,16 @@ describe("Padrão: Paralelo", () => {
     const resultadoDeA = { status: "approve", response: "resultado de A" };
     const resultadoDeB = { status: "approve", response: "resultado de B" };
     const resultadoDeC = { status: "approve", response: "resultado de C" };
-    const resultadoConsolidado = { status: "approve", response: "resultado consolidado" };
-    const consolidar = vi.fn((_resultados: AgentResponse[]) => resultadoConsolidado);
+    const resultadoConsolidado = { status: "approve", response: "parecer consolidado" };
+    const executeConsolidador = vi
+      .spyOn(consolidador, "execute")
+      .mockResolvedValue(resultadoConsolidado);
+    const setHumanRequestConsolidador = vi.spyOn(consolidador, "setHumanRequest");
 
     const paralelo = new ParallelAgent({
       systemPrompt: "Você executa os agents ao mesmo tempo.",
       subAgents: [agentA, agentB, agentC],
-      consolidator: consolidar,
+      consolidator: consolidador,
     });
     paralelo.setHumanRequest("Avalie o módulo de pagamentos");
 
@@ -70,20 +78,27 @@ describe("Padrão: Paralelo", () => {
     expect(setHumanRequestA).toHaveBeenCalledWith("Avalie o módulo de pagamentos");
     expect(setHumanRequestB).toHaveBeenCalledWith("Avalie o módulo de pagamentos");
     expect(setHumanRequestC).toHaveBeenCalledWith("Avalie o módulo de pagamentos");
-    expect(consolidar).not.toHaveBeenCalled();
+    expect(executeConsolidador).not.toHaveBeenCalled();
 
     // Terminam fora de ordem; o consolidador espera pelos três
     execucaoB.resolver(resultadoDeB);
     execucaoC.resolver(resultadoDeC);
     await aguardarMicrotarefas();
-    expect(consolidar).not.toHaveBeenCalled();
+    expect(executeConsolidador).not.toHaveBeenCalled();
 
     execucaoA.resolver(resultadoDeA);
     const resultado = await execucao;
 
-    // O consolidador recebe os resultados na ordem dos agents
-    expect(consolidar).toHaveBeenCalledTimes(1);
-    expect(consolidar).toHaveBeenCalledWith([resultadoDeA, resultadoDeB, resultadoDeC]);
+    // O consolidador recebe os resultados dos três como solicitação, na ordem dos agents
+    const [pedido] = setHumanRequestConsolidador.mock.calls[0]!;
+    expect(pedido).toContain("resultado de A");
+    expect(pedido).toContain("resultado de B");
+    expect(pedido).toContain("resultado de C");
+    expect(pedido.indexOf("resultado de A")).toBeLessThan(pedido.indexOf("resultado de B"));
+    expect(pedido.indexOf("resultado de B")).toBeLessThan(pedido.indexOf("resultado de C"));
+    expect(executeConsolidador).toHaveBeenCalledTimes(1);
+
+    // A saída traz o resumo do consolidador e o bruto de cada agent, para auditoria
     expect(resultado).toEqual({
       consolidado: resultadoConsolidado,
       resultados: [resultadoDeA, resultadoDeB, resultadoDeC],
