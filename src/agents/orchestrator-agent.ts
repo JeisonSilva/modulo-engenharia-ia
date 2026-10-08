@@ -1,5 +1,5 @@
-import { AgentCoreIA, type AgentCoreIAOptions } from "./agent-core-ia.js";
-import type { Llm } from "./llm.js";
+import { AgentCoreIA, type AgentCoreIAOptions } from "../core/agent-core-ia.js";
+import type { Llm } from "../core/llm.js";
 
 export type OrchestratorAgentOptions = AgentCoreIAOptions & {
   subAgents: AgentCoreIA[];

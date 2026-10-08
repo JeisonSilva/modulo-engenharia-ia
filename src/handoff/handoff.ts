@@ -1,4 +1,4 @@
-import type { AgentResponse } from "./response.js";
+import type { AgentResponse } from "../core/response.js";
 
 export type HandoffResultado = {
   resposta: AgentResponse;

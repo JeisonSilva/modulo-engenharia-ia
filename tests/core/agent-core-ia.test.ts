@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AgentCoreIA, systemPromptSchema } from "../src/index.js";
+import { AgentCoreIA, systemPromptSchema } from "../../src/index.js";
 
 type AgentResponse = {
   status: string;
