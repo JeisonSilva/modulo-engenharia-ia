@@ -154,6 +154,58 @@ describe("Padrão: Orquestrador de orquestradores", () => {
     });
   });
 
+  it("deve registrar um caminho mais curto quando a raiz escolhe o orquestrador de Qualidade", async () => {
+    const rest = criarEspecialista("Especialista REST");
+    const testes = criarEspecialista("Especialista de testes");
+    const executeRest = vi.spyOn(rest, "execute");
+    vi.spyOn(testes, "execute").mockResolvedValue({
+      status: "approve",
+      response: "Testes: suíte escrita",
+    });
+
+    const api = new IntelligentOrchestrator({
+      role: "Orquestrador de API",
+      goal: "Entregar APIs completas",
+      backstory: "Você coordena especialistas de API.",
+      subAgents: [rest],
+      llm: criarLlm([]),
+      maxRounds: 3,
+    });
+    const qualidade = new IntelligentOrchestrator({
+      role: "Orquestrador de Qualidade",
+      goal: "Garantir a qualidade",
+      backstory: "Você coordena especialistas de qualidade.",
+      subAgents: [testes],
+      llm: criarLlm(["Especialista de testes", "consolidado da Qualidade", "0.98"]),
+      maxRounds: 3,
+    });
+    const backend = new OrchestratorRouter({
+      role: "Orquestrador de Backend",
+      goal: "Encaminhar o trabalho de backend",
+      backstory: "Você conhece as equipes de backend.",
+      subOrchestrators: [api],
+      llm: criarLlm([]),
+    });
+    const raiz = new OrchestratorRouter({
+      role: "Orquestrador raiz",
+      goal: "Encaminhar cada solicitação ao orquestrador certo",
+      backstory: "Você conhece todas as equipes.",
+      subOrchestrators: [backend, qualidade],
+      llm: criarLlm(["Orquestrador de Qualidade"]),
+    });
+    const executeBackend = vi.spyOn(backend, "execute");
+
+    raiz.setHumanRequest("Escreva os testes do cadastro de clientes");
+    const resultado = await raiz.execute();
+
+    expect(resultado).toMatchObject({
+      response: "consolidado da Qualidade",
+      route: ["Orquestrador raiz", "Orquestrador de Qualidade"],
+    });
+    expect(executeBackend).not.toHaveBeenCalled();
+    expect(executeRest).not.toHaveBeenCalled();
+  });
+
   it("deve rejeitar uma equipe que mistura orquestradores e especialistas", () => {
     const especialista = criarEspecialista("Especialista REST");
     const outroEspecialista = criarEspecialista("Especialista de banco de dados");
