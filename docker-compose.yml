@@ -1,6 +1,23 @@
+# Infraestrutura para os testes de integração:
+#   docker compose up -d --wait
+#   RABBITMQ_URL=amqp://localhost MONGODB_URL=mongodb://localhost npm test
 services:
   rabbitmq:
     image: rabbitmq:4-management
     ports:
       - "5672:5672"
       - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+  mongodb:
+    image: mongo:8.2
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
