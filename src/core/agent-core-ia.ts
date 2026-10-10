@@ -1,5 +1,8 @@
+import type { Estrutura } from "./estrutura.js";
 import type { ExecutionContext } from "../handoff/handoff.js";
+import type { AgentResponse } from "./response.js";
 import { systemPromptSchema } from "./system-prompt.js";
+import type { AgentTransport } from "./transport.js";
 
 export type Task = {
   description: string;
@@ -61,6 +64,7 @@ export class AgentCoreIA {
   readonly guardrails: readonly Guardrail[];
   readonly tools: readonly Tool[];
   humanRequest: string | undefined;
+  estrutura: Estrutura | undefined;
 
   constructor(options: AgentCoreIAOptions) {
     this.role = "role" in options ? options.role : undefined;
@@ -70,8 +74,22 @@ export class AgentCoreIA {
     this.tools = options.tools ?? [];
   }
 
-  setHumanRequest(text: string): void {
+  // A estrutura vale só para este pedido: sem ela, a anterior é descartada
+  setHumanRequest(text: string, estrutura?: Estrutura): void {
     this.humanRequest = text;
+    this.estrutura = estrutura;
+  }
+
+  // Passa a consumir a fila da role, uma mensagem por vez; o handoff entre árvores segue em memória
+  async listen(transport: AgentTransport): Promise<() => Promise<void>> {
+    const role = this.role;
+    if (role === undefined) {
+      throw new Error("Só um agent com role pode escutar uma fila");
+    }
+    return transport.serve(role, async (pedido) => {
+      this.setHumanRequest(pedido.texto, pedido.estrutura);
+      return this.execute<AgentResponse>();
+    });
   }
 
   async execute<T>(_contexto?: ExecutionContext): Promise<T> {

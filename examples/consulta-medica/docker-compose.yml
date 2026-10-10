@@ -1,0 +1,114 @@
+# Exemplo: pattern sequencial com 3 agents, cada um em seu container.
+# Os agents deste exemplo não usam LLM: devolvem respostas fixas (veja servicos/).
+#
+#   docker compose up --build
+#
+#   usuário ─HTTP─► sequencial ─► [triagem] ─► [medico] ─► [revisor] ─► consolidador (no sequencial)
+#
+# Cada container consome UMA fila (FILA_ENTRADA) e publica na EXCHANGE com uma routing key.
+# Ninguém conhece o container vizinho: a ordem do pipeline é o encadeamento das keys abaixo.
+# A fila de cada serviço é ligada à exchange com a routing key igual ao nome da fila.
+
+x-broker: &broker
+  RABBITMQ_URL: amqp://rabbitmq
+  EXCHANGE: agents
+
+x-build: &build
+  context: ../..
+  dockerfile: examples/consulta-medica/Dockerfile
+
+x-agent: &agent
+  restart: on-failure
+  depends_on:
+    rabbitmq:
+      condition: service_healthy
+
+services:
+  rabbitmq:
+    image: rabbitmq:4-management
+    ports:
+      - "15672:15672" # painel de administração
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  mongodb:
+    image: mongo:8.2
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Pattern: API que recebe a solicitação + consolidador que grava o resultado no MongoDB
+  #   POST /solicitacoes { "texto": "..." }  -> 202 { id }
+  #   GET  /solicitacoes/{id}                -> resultado
+  sequencial:
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    image: patterns/sequencial:1.0.0
+    build:
+      <<: *build
+      args:
+        SERVICO: sequencial
+    ports:
+      - "8080:8080"
+    environment:
+      <<: *broker
+      PORT: "8080"
+      KEY_SAIDA: triagem # a única key em que o sequencial publica: a primeira etapa
+      FILA_RESULTADO: consulta.resultado # consolidador: fim do pipeline
+      FILA_ERRO: consulta.erro # consolidador: erros desviados pelos agents
+      MONGODB_URL: mongodb://mongodb
+      MONGODB_DB: consulta_medica
+
+  # Etapa 1
+  triagem:
+    <<: *agent
+    image: agents/triagem:1.2.0 # system prompt e schema fazem parte da imagem
+    build:
+      <<: *build
+      args:
+        SERVICO: triagem
+    environment:
+      <<: *broker
+      FILA_ENTRADA: triagem
+      KEY_SAIDA: medico
+      KEY_ERRO: consulta.erro
+      FILA_ERRO_HABILITADA: "true" # erro vai para a fila de erro e o pipeline para aqui
+
+  # Etapa 2
+  medico:
+    <<: *agent
+    image: agents/medico:2.0.1
+    build:
+      <<: *build
+      args:
+        SERVICO: medico
+    environment:
+      <<: *broker
+      FILA_ENTRADA: medico
+      KEY_SAIDA: revisor
+      KEY_ERRO: consulta.erro
+      FILA_ERRO_HABILITADA: "true"
+
+  # Etapa 3: a saída é a fila de resultado do consolidador
+  revisor:
+    <<: *agent
+    image: agents/revisor:1.0.0
+    build:
+      <<: *build
+      args:
+        SERVICO: revisor
+    environment:
+      <<: *broker
+      FILA_ENTRADA: revisor
+      KEY_SAIDA: consulta.resultado
+      KEY_ERRO: consulta.erro
+      FILA_ERRO_HABILITADA: "false" # erro segue em KEY_SAIDA junto com os dados parciais
